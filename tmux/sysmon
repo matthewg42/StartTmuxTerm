@@ -1,0 +1,3 @@
+new-window htop
+split-window -p 40 'journalctl -f'
+split-window -p 30

@@ -1,0 +1,118 @@
+#!/usr/bin/python3
+#
+# StartTmuxTerm (C) 2017 Matthew Gates
+#
+# This software is released under the terms of the GNU GPL version 3
+# See the file LICENSE for details - this file should have shipped
+# with this software.
+
+import sys
+import os
+import subprocess
+from PyQt5.QtWidgets import QApplication, QListWidget
+from PyQt5 import QtCore
+
+global selected_profile
+selected_profile = None
+
+class ProfileList(QListWidget):
+    def __init__(self, parent=None):
+        QListWidget.__init__(self, parent)
+        for f in [x for x in os.listdir('%s/.tmux' % os.environ['HOME']) if x[0] != '.']:
+            print('adding item: %s' % f)
+            self.addItem(f)
+        #self.currentTextChanged.connect(self.use_profile)
+        self.itemClicked.connect(self.use_profile)
+
+        # Get the name of the default profile from ~/.tmux/.default if it exists
+        default = getDefaultProfile()
+        print('default:', default)
+        if default:
+            found = self.findItems(default, QtCore.Qt.MatchFixedString)
+            print('found:', found)
+            print('len:', len(found))
+            if (len(found)) == 1:
+                self.setCurrentItem(found[0])
+
+    def keyPressEvent(self, e):
+        if e.key() == QtCore.Qt.Key_Escape:
+            self.close()
+        elif e.key() == QtCore.Qt.Key_Return:
+            self.use_profile(self.currentItem())
+        else:
+            super().keyPressEvent(e)
+
+    def use_profile(self, item):
+        global selected_profile
+        modifiers = QApplication.keyboardModifiers()
+        selected_profile = item.text()
+        if modifiers == QtCore.Qt.ShiftModifier:
+            self.set_default_session(selected_profile)
+        self.close()
+
+    def set_default_session(self, session):
+        def_path = '%s/.tmux/.default' % os.environ['HOME']
+        with open(def_path, 'w') as f:
+            f.write('%s\n' % session)
+        print('set default: %s' % selected_profile)
+
+def getRes():
+    import subprocess
+    p = subprocess.Popen("xrandr", stdout=subprocess.PIPE)
+    for line in p.stdout:
+        line = line.decode()
+        line.rstrip()
+        if '*' in line:
+            line = line.strip()
+            return [int(x) for x in line[:line.find(' ')].split('x')]
+
+def getDefaultProfile():
+    default = None
+    try:
+        def_path = '%s/.tmux/.default' % os.environ['HOME']
+        with open(def_path, 'r') as f:
+            default = f.read()
+    except Exception as e:
+        print('exception while opening %s: %s' % (def_path, e))
+    print('getDefaultProfile() got: %s' % default)
+    return default.strip()
+
+def launchSession(profile):
+    print('Launching profile: %s' % profile)
+    if profile is None:
+        return
+    # get a list of exiting sessions to check if we can join an existing one
+    p = subprocess.Popen(['tmux', 'list-sessions', '-F', '#S'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out, err = p.communicate()
+    sessions = [x.decode() for x in out.split()]
+    if profile in sessions:
+        #subprocess.call(['gnome-terminal', '--hide-menubar', '-e', 'tmux attach -t %s' % profile])  
+        subprocess.call(['terminator', '-b', '-u', '-e', 'tmux attach -t %s' % profile])  
+    else:
+        #subprocess.call(['gnome-terminal', '--hide-menubar', '-e', 'tmux attach -t %s' % profile])  
+        subprocess.call(['terminator', '-b', '-u', '-e', 'tmux new-session -s %s "tmux source-file ~/.tmux/%s"' % (profile, profile)])  
+
+if __name__ == '__main__':
+    try:
+        if sys.argv[1] == '-r' or sys.argv[1] == '--run':
+            # just try to run whatever the default is
+            launchSession(getDefaultProfile())
+            exit(0) 
+    except Exception :
+        pass
+
+    app = QApplication(sys.argv)
+    font = app.font()
+    font.setPointSize(14)
+    app.setFont(font)
+
+    p = ProfileList()
+    xsiz, ysiz = 350, 400
+    p.setFixedSize(xsiz, ysiz)
+    xres, yres = getRes()
+    p.move((xres/2)-(xsiz/2), (yres/2)-(ysiz/2))
+    p.setWindowTitle('Select Profile')
+    p.show()
+    app.exec_()
+    launchSession(selected_profile)
+    
