@@ -21,7 +21,8 @@ Setup
 * Copy the tmux directory to your home directory, renaming it to .tmux, and
 * Copy bin/StartTmuxTerm to a bin directory and make it executable, i.e.
 
-    $ cp -Rp tmux ~/.tmux
-    $ sudo install -m 755 bin/StartTmuxTerm /usr/local/bin
-
+```shell
+$ cp -Rp tmux ~/.tmux
+$ sudo install -m 755 bin/StartTmuxTerm /usr/local/bin
+```
 
