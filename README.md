@@ -26,3 +26,8 @@ $ cp -Rp tmux ~/.tmux
 $ sudo install -m 755 bin/StartTmuxTerm /usr/local/bin
 ```
 
+To Do
+-----
+
+* Support multiple terminal emulators with good default settings for each
+
